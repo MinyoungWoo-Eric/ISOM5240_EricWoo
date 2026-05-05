@@ -4,4 +4,5 @@ import streamlit as st
 st.set_page_config(page_title="Glory ManU", page_icon="⚽")
 
 st.write("VMS Group, Eric Wang")
-
+st.write("VMS Group, Eric Woo")
+st.write("VMS Group, Antonio Hernandez Cerdo")
