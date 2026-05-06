@@ -4,10 +4,11 @@ import streamlit as st
 st.set_page_config(page_title="Glory ManU", page_icon="⚽")
 
 st.header("VMS Soccer Team ⚽")
-
 st.subheader("Hello, *World!* :sunglasses:")
+
+st.badge("Key Players")
 st.write("Eric Wang")
 st.write("Eric Woo")
 st.write("Antonio Hernandez Cerdo")
 
-st.badge("Yeah")
+
