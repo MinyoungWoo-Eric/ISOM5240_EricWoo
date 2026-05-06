@@ -5,7 +5,7 @@ st.set_page_config(page_title="Glory ManU", page_icon="⚽")
 
 st.header("VMS Soccer Team ⚽")
 
-st.write("Hello, *World!* :sunglasses:")
+st.write("Hello, *World!* :Manchester United:")
 st.write("Eric Wang")
 st.write("Eric Woo")
 st.write("Antonio Hernandez Cerdo")
