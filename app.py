@@ -369,6 +369,7 @@ if uploaded_file is not None:
 
         if st.session_state["audio"] is not None:
             st.audio(st.session_state["audio"], format="audio/mp3")
+            st.balloons()
             st.caption(
                 "🎵  Press play above to listen — replay it as many times "
                 "as you like!"
