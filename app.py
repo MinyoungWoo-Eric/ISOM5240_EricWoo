@@ -251,14 +251,14 @@ def text2story(
 def text2audio(story_text: str) -> bytes:
     """
     Convert a story into MP3 audio bytes using gTTS.
-    `tld='com'` gives a warm British female voice that sounds
+    `tld='co.uk'` gives a warm British female voice that sounds
     storyteller-like for children. Switch to 'com' (US) or 'com.au'
     (Australian) if you prefer a different accent.
     """
     tts = gTTS(
         text=story_text,
         lang="en",
-        tld="co.uk",
+        tld="com",
         slow=False,
     )
     buffer = io.BytesIO()
