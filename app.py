@@ -13,7 +13,6 @@ State management:
     - All HF models are loaded once via @st.cache_resource.
     - Caption / story / audio are kept in st.session_state so that:
         * Playing the audio does NOT regenerate the story.
-        * Changing the theme regenerates ONLY the story.
         * Uploading a new image resets everything.
 """
 
@@ -242,8 +241,8 @@ def text2story(
 def text2audio(story_text: str) -> bytes:
     """
     Convert a story into MP3 audio bytes using gTTS.
-    `tld='co.uk'` gives a warm British female voice that sounds
-    storyteller-like for children. Switch to 'com' (US) or 'com.au'
+    `tld='com'` gives a warm Enlish female voice that sounds
+    storyteller-like for children. Switch to 'co.uk' (Uk) or 'com.au'
     (Australian) if you prefer a different accent.
     """
     tts = gTTS(
