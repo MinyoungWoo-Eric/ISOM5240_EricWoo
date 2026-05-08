@@ -162,7 +162,6 @@ def img2text(image) -> str:
 # =========================================================================
 def text2story(
     caption: str,
-    theme: str = "Adventure",
     min_words: int = 50,
     max_words: int = 100,
     max_attempts: int = 3,
@@ -183,7 +182,7 @@ def text2story(
     )
     user_prompt = (
         f"Picture description: \"{caption}\"\n\n"
-        f"Write a {theme.lower()} story that is directly about this picture.\n"
+        f"Write a happy little story that is directly about this picture.\n"
         f"Requirements:\n"
         f"- The setting MUST match the picture description.\n"
         f"- The main characters MUST be those described in the picture.\n"
@@ -279,12 +278,6 @@ st.markdown(
 
 with st.sidebar:
     st.header("🎨 Story settings")
-    theme = st.selectbox(
-        "Pick a story theme",
-        ["Adventure", "Friendship", "Magic", "Animals", "Space", "Bedtime"],
-        index=0,
-    )
-    st.markdown("---")
     st.caption(
         "ℹ️  The first time you use the app, the AI models need to load. "
         "After that, everything is fast! ☕"
@@ -295,7 +288,7 @@ uploaded_file = st.file_uploader(
     type=["jpg", "jpeg", "png"],
 )
 
-for key in ("file_key", "caption", "story", "audio", "theme_used"):
+for key in ("file_key", "caption", "story", "audio"):
     st.session_state.setdefault(key, None)
 
 
@@ -309,7 +302,6 @@ if uploaded_file is not None:
             caption=None,
             story=None,
             audio=None,
-            theme_used=None,
         )
 
     # Always show the uploaded image (Requirement #4).
@@ -339,7 +331,6 @@ if uploaded_file is not None:
 
     needs_new_story = (
         st.session_state["story"] is None
-        or st.session_state["theme_used"] != theme
         or regen_clicked
     )
 
@@ -347,9 +338,8 @@ if uploaded_file is not None:
         with st.spinner("📝  Writing your story…"):
             try:
                 st.session_state["story"] = text2story(
-                    st.session_state["caption"], theme=theme
+                    st.session_state["caption"]
                 )
-                st.session_state["theme_used"] = theme
                 # Story changed -> any cached audio is now stale.
                 st.session_state["audio"] = None
             except Exception as exc:
