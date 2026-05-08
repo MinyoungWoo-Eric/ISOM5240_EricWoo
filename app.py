@@ -29,8 +29,6 @@ import torch
 from gtts import gTTS
 from PIL import Image
 from transformers import (
-    AutoModelForCausalLM,
-    AutoTokenizer,
     BlipForConditionalGeneration,
     BlipProcessor,
     pipeline,
@@ -93,16 +91,13 @@ def load_story_pipeline():
     Qwen2.5 is a modern, instruction-tuned causal LM in the
     Hugging Face 'Text Generation' category.
     """
-    model_id = "Qwen/Qwen2.5-0.5B-Instruct"
-    tokenizer = AutoTokenizer.from_pretrained(model_id)
-    model = AutoModelForCausalLM.from_pretrained(
-        model_id,
-        torch_dtype=torch.float32,   # CPU-safe default
-    )
+    # High-level pipeline helper (same as the HF model card snippet).
+    # bfloat16 cuts the LM's RAM usage in half — important on
+    # Streamlit Cloud's 1 GB free tier.
     return pipeline(
         "text-generation",
-        model=model,
-        tokenizer=tokenizer,
+        model="Qwen/Qwen2.5-0.5B-Instruct",
+        torch_dtype=torch.bfloat16,
     )
 
 
@@ -179,18 +174,24 @@ def text2story(
     storyteller = load_story_pipeline()
 
     system_prompt = (
-        "You are a warm, friendly children's book author. "
-        "You write simple, imaginative, happy stories for kids aged 3 to 10. "
-        "You never include anything scary, sad, violent, or inappropriate. "
-        "You always finish your stories with a warm, happy ending."
+        "You are a warm, friendly children's book author for kids aged 3 to 10. "
+        "You write happy, simple, imaginative stories with cute character names "
+        "and warm endings. You never include anything scary, sad, violent, or "
+        "inappropriate. Your stories ALWAYS take place in the exact setting shown "
+        "in the picture, and ALWAYS feature the same characters, animals, and "
+        "objects mentioned in the picture description."
     )
     user_prompt = (
-        f"Write a happy {theme.lower()} story for young children aged 3 to 10. "
-        f"The story must be between 70 and 90 words. "
-        f"It is inspired by this picture: '{caption}'. "
-        f"Use simple words and short sentences. "
-        f"Give the main character a cute name. "
-        f"Output ONLY the story text — no title, no preamble, no notes."
+        f"Picture description: \"{caption}\"\n\n"
+        f"Write a {theme.lower()} story that is directly about this picture.\n"
+        f"Requirements:\n"
+        f"- The setting MUST match the picture description.\n"
+        f"- The main characters MUST be those described in the picture.\n"
+        f"- The story must be 70 to 90 words long.\n"
+        f"- Use simple words and short sentences.\n"
+        f"- Give the main character a cute name.\n"
+        f"- End with a warm, happy ending.\n\n"
+        f"Output only the story text — no title, no notes, no preamble."
     )
 
     messages = [
@@ -204,7 +205,7 @@ def text2story(
             messages,
             max_new_tokens=220,
             do_sample=True,
-            temperature=0.85 + 0.05 * attempt,   # slightly more creative on retry
+            temperature=0.70 + 0.05 * attempt,   
             top_p=0.95,
             repetition_penalty=1.15,
         )
@@ -324,8 +325,8 @@ if uploaded_file is not None:
                 st.error(f"😔  Sorry, I couldn't read this picture. ({exc})")
                 st.stop()
     st.success("✅  I see what's in your picture!")
-    with st.expander("🔎  What I saw in the picture"):
-        st.write(st.session_state["caption"])
+    st.markdown("**🔎  What I saw in the picture [Caption]:**")
+    st.info(st.session_state["caption"])
 
     # ---- Stage 2: story (once per image+theme; or on user request) ----
     st.markdown("### 📚 Your story")
@@ -365,14 +366,6 @@ if uploaded_file is not None:
             st.caption(f"📏  Word count: **{word_count}**  ✅ (target: 50–100)")
         else:
             st.caption(f"📏  Word count: **{word_count}**  (target: 50–100)")
-
-        st.download_button(
-            "💾  Download story as text",
-            data=st.session_state["story"],
-            file_name="my_story.txt",
-            mime="text/plain",
-            use_container_width=True,
-        )
 
         # ---- Stage 3: audio (once per story; replays do NOT regenerate) ----
         st.markdown("### 🎧 Listen to your story")
