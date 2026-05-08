@@ -267,7 +267,7 @@ st.markdown(
 )
 
 with st.sidebar:
-    st.header("🎨 Story settings")
+    st.header("🎨 How it works")
     st.caption(
         "ℹ️  The first time you use the app, the AI models need to load. "
         "After that, everything is fast! ☕"
@@ -295,7 +295,7 @@ if uploaded_file is not None:
         )
 
     # Always show the uploaded image (Requirement #4).
-    st.image(uploaded_file, caption="🖼️  Your picture", use_container_width=True)
+    st.image(uploaded_file, caption="🖼️  Uploaded Picture", use_container_width=True)
 
     # ---- Stage 1: caption (once per image) ----
     if st.session_state["caption"] is None:
@@ -307,7 +307,7 @@ if uploaded_file is not None:
                 st.error(f"😔  Sorry, I couldn't read this picture. ({exc})")
                 st.stop()
     st.success("✅  I see what's in your picture!")
-    st.markdown("**🔎  What I saw in the picture [Caption]:**")
+    st.markdown("**🔎  What I saw in the picture:**")
     st.info(st.session_state["caption"])
 
     # ---- Stage 2: story (once per image+theme; or on user request) ----
