@@ -1,4 +1,7 @@
-streamlit
-transformers<5.0.0
-torch
-
+streamlit>=1.36.0
+transformers>=4.41.0
+torch>=2.0.0
+datasets>=2.14.0
+sentencepiece>=0.1.99
+Pillow>=10.0.0
+numpy>=1.24.0
