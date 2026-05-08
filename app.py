@@ -28,11 +28,7 @@ import streamlit as st
 import torch
 from gtts import gTTS
 from PIL import Image
-from transformers import (
-    BlipForConditionalGeneration,
-    BlipProcessor,
-    pipeline,
-)
+from transformers import pipeline
 
 
 # =========================================================================
@@ -74,14 +70,11 @@ st.markdown(
 # =========================================================================
 @st.cache_resource(show_spinner="🖼️  Loading the picture-reader…")
 def load_caption_model():
-    """Load BLIP processor + model directly."""
-    processor = BlipProcessor.from_pretrained(
-        "Salesforce/blip-image-captioning-base"
+    """Load BLIP via the high-level pipeline helper."""
+    return pipeline(
+        "image-to-text",
+        model="Salesforce/blip-image-captioning-base",
     )
-    model = BlipForConditionalGeneration.from_pretrained(
-        "Salesforce/blip-image-captioning-base"
-    )
-    return processor, model
 
 
 @st.cache_resource(show_spinner="✍️  Loading the story-teller…")
@@ -148,13 +141,11 @@ def _extract_assistant_reply(generated):
 # =========================================================================
 def img2text(image) -> str:
     """Generate a short caption from a PIL.Image (or file path / bytes)."""
-    processor, model = load_caption_model()
+    captioner = load_caption_model()
     if not isinstance(image, Image.Image):
         image = Image.open(image).convert("RGB")
-    inputs = processor(images=image, return_tensors="pt")
-    with torch.no_grad():
-        output_ids = model.generate(**inputs, max_new_tokens=50)
-    return processor.decode(output_ids[0], skip_special_tokens=True).strip()
+    result = captioner(image)
+    return result[0]["generated_text"].strip()
 
 
 # =========================================================================
