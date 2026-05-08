@@ -5,17 +5,15 @@ A Streamlit app that turns an uploaded picture into a short, kid-friendly
 audio story for children aged 3 to 10.
 
 Pipeline (each stage is a clearly named function):
-    1) img2text(image)    : Salesforce/blip-image-captioning-base
-    2) text2story(caption): google/flan-t5-base   (with prompt engineering
-                            + 50-100 word validation/retry)
-    3) text2audio(story)  : microsoft/speecht5_tts + a warm female speaker
-                            embedding from the CMU-Arctic xvector dataset
+    1) img2text(image)    : Salesforce/blip-image-captioning-base   (HF Image-to-Text)
+    2) text2story(caption): Qwen/Qwen2.5-0.5B-Instruct              (HF Text Generation)
+    3) text2audio(story)  : gTTS  (assignment-allowed, kid-friendly)
 
 State management:
-    - All models are loaded once via @st.cache_resource.
+    - All HF models are loaded once via @st.cache_resource.
     - Caption / story / audio are kept in st.session_state so that:
         * Playing the audio does NOT regenerate the story.
-        * Changing the theme regenerates ONLY the story (not the caption).
+        * Changing the theme regenerates ONLY the story.
         * Uploading a new image resets everything.
 """
 
@@ -23,15 +21,20 @@ State management:
 # Imports
 # =========================================================================
 import hashlib
+import io
 import re
-from typing import Tuple
 
-import numpy as np
 import streamlit as st
 import torch
+from gtts import gTTS
 from PIL import Image
-from datasets import load_dataset
-from transformers import pipeline
+from transformers import (
+    AutoModelForCausalLM,
+    AutoTokenizer,
+    BlipForConditionalGeneration,
+    BlipProcessor,
+    pipeline,
+)
 
 
 # =========================================================================
@@ -43,7 +46,6 @@ st.set_page_config(
     layout="centered",
 )
 
-# A small, kid-friendly stylesheet (rounded buttons, soft colors).
 st.markdown(
     """
     <style>
@@ -73,54 +75,46 @@ st.markdown(
 # Cached model loaders  (run once per session thanks to @st.cache_resource)
 # =========================================================================
 @st.cache_resource(show_spinner="🖼️  Loading the picture-reader…")
-def load_caption_pipeline():
-    """Load the image-to-text (BLIP) pipeline."""
-    return pipeline(
-        "image-to-text",
-        model="Salesforce/blip-image-captioning-base",
+def load_caption_model():
+    """Load BLIP processor + model directly."""
+    processor = BlipProcessor.from_pretrained(
+        "Salesforce/blip-image-captioning-base"
     )
+    model = BlipForConditionalGeneration.from_pretrained(
+        "Salesforce/blip-image-captioning-base"
+    )
+    return processor, model
 
 
 @st.cache_resource(show_spinner="✍️  Loading the story-teller…")
 def load_story_pipeline():
-    """Load the instruction-tuned text2text (Flan-T5) pipeline."""
+    """
+    Load the Qwen2.5-0.5B-Instruct text-generation pipeline.
+    Qwen2.5 is a modern, instruction-tuned causal LM in the
+    Hugging Face 'Text Generation' category.
+    """
+    model_id = "Qwen/Qwen2.5-0.5B-Instruct"
+    tokenizer = AutoTokenizer.from_pretrained(model_id)
+    model = AutoModelForCausalLM.from_pretrained(
+        model_id,
+        torch_dtype=torch.float32,   # CPU-safe default
+    )
     return pipeline(
-        "text2text-generation",
-        model="google/flan-t5-base",
+        "text-generation",
+        model=model,
+        tokenizer=tokenizer,
     )
-
-
-@st.cache_resource(show_spinner="🎤  Loading the friendly voice…")
-def load_tts_pipeline_and_embedding():
-    """
-    Load SpeechT5 TTS pipeline AND a warm female speaker embedding
-    from the CMU-Arctic xvector dataset.
-    Index 7306 is a bright, clear female voice that is much friendlier
-    for kids than the original mms-tts-eng adult-male voice.
-    """
-    tts_pipe = pipeline("text-to-speech", model="microsoft/speecht5_tts")
-    embeddings_dataset = load_dataset(
-        "Matthijs/cmu-arctic-xvectors", split="validation"
-    )
-    speaker_embedding = torch.tensor(
-        embeddings_dataset[7306]["xvector"]
-    ).unsqueeze(0)
-    return tts_pipe, speaker_embedding
 
 
 # =========================================================================
 # Small helpers
 # =========================================================================
 def _count_words(text: str) -> int:
-    """Count words using a simple word-boundary regex."""
     return len(re.findall(r"\b\w+\b", text))
 
 
 def _trim_to_word_limit(text: str, max_words: int) -> str:
-    """
-    Trim `text` to <= max_words while preserving sentence boundaries
-    where possible. Falls back to a hard word cut if no full sentence fits.
-    """
+    """Trim text to <= max_words while preserving sentence boundaries."""
     sentences = re.split(r"(?<=[.!?])\s+", text.strip())
     chosen, count = [], 0
     for s in sentences:
@@ -131,28 +125,41 @@ def _trim_to_word_limit(text: str, max_words: int) -> str:
         count += n
     trimmed = " ".join(chosen).strip()
     if not trimmed:
-        # No full sentence fits  ->  hard cut.
         words = text.split()[:max_words]
         trimmed = " ".join(words).rstrip(",;:") + "."
     return trimmed
 
 
 def _hash_uploaded_file(uploaded_file) -> str:
-    """Return an MD5 hash of the uploaded file (used as a state key)."""
     return hashlib.md5(uploaded_file.getvalue()).hexdigest()
+
+
+def _extract_assistant_reply(generated):
+    """
+    Pipeline output for chat-formatted input is a list of message dicts.
+    Pull out the assistant's text content robustly.
+    """
+    if isinstance(generated, list) and generated:
+        last = generated[-1]
+        if isinstance(last, dict) and "content" in last:
+            return last["content"]
+    if isinstance(generated, str):
+        return generated
+    return str(generated)
 
 
 # =========================================================================
 # Stage 1 : Image  ->  Caption
 # =========================================================================
 def img2text(image) -> str:
-    """
-    Generate a short caption that describes the uploaded image.
-    Accepts a PIL.Image, a numpy array, or a file path.
-    """
-    captioner = load_caption_pipeline()
-    result = captioner(image)
-    return result[0]["generated_text"].strip()
+    """Generate a short caption from a PIL.Image (or file path / bytes)."""
+    processor, model = load_caption_model()
+    if not isinstance(image, Image.Image):
+        image = Image.open(image).convert("RGB")
+    inputs = processor(images=image, return_tensors="pt")
+    with torch.no_grad():
+        output_ids = model.generate(**inputs, max_new_tokens=50)
+    return processor.decode(output_ids[0], skip_special_tokens=True).strip()
 
 
 # =========================================================================
@@ -167,42 +174,45 @@ def text2story(
 ) -> str:
     """
     Turn the image caption into a warm 50-100 word story for kids 3-10.
-
-    Steps:
-        1.  Build a kid-safe, theme-aware instruction prompt.
-        2.  Generate with Flan-T5 (sampling for variety).
-        3.  Validate word count; trim if too long; retry if too short.
-        4.  Final safety net pads/trims so the result is always in range.
+    Uses Qwen2.5-Instruct's chat template + retry loop + safety net.
     """
     storyteller = load_story_pipeline()
 
-    base_prompt = (
+    system_prompt = (
+        "You are a warm, friendly children's book author. "
+        "You write simple, imaginative, happy stories for kids aged 3 to 10. "
+        "You never include anything scary, sad, violent, or inappropriate. "
+        "You always finish your stories with a warm, happy ending."
+    )
+    user_prompt = (
         f"Write a happy {theme.lower()} story for young children aged 3 to 10. "
         f"The story must be between 70 and 90 words. "
-        f"It is about this picture: '{caption}'. "
+        f"It is inspired by this picture: '{caption}'. "
         f"Use simple words and short sentences. "
         f"Give the main character a cute name. "
-        f"Make it warm, imaginative, and friendly, with a happy ending. "
-        f"Do not include anything scary, sad, or violent."
+        f"Output ONLY the story text — no title, no preamble, no notes."
     )
+
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt},
+    ]
 
     last_candidate = ""
     for attempt in range(max_attempts):
         outputs = storyteller(
-            base_prompt,
+            messages,
             max_new_tokens=220,
-            min_new_tokens=120,
             do_sample=True,
             temperature=0.85 + 0.05 * attempt,   # slightly more creative on retry
             top_p=0.95,
-            repetition_penalty=1.3,
-            no_repeat_ngram_size=3,
+            repetition_penalty=1.15,
         )
-        candidate = outputs[0]["generated_text"].strip()
+        candidate = _extract_assistant_reply(outputs[0]["generated_text"]).strip()
 
-        # Some checkpoints echo the prompt — strip a leading "Story:" if present.
-        if candidate.lower().startswith("story:"):
-            candidate = candidate[len("story:"):].strip()
+        # Strip any leading "Story:" or quote marks the model may add.
+        candidate = re.sub(r'^(story\s*:\s*|["“”\'])+', '', candidate, flags=re.I).strip()
+        candidate = candidate.rstrip('"”\'')
 
         wc = _count_words(candidate)
         if wc > max_words:
@@ -212,14 +222,13 @@ def text2story(
         if min_words <= wc <= max_words:
             return candidate
 
-        last_candidate = candidate  # keep the best we have so far
+        last_candidate = candidate
 
     # ---- Safety net: force the result into the 50-100 range. ----
     story = last_candidate
     if _count_words(story) > max_words:
         story = _trim_to_word_limit(story, max_words)
 
-    # If still too short, append a gentle, safe closing line until we reach min.
     safe_endings = [
         "Everyone smiled and felt warm and happy inside.",
         "They held hands and laughed under the bright, kind sun.",
@@ -237,35 +246,36 @@ def text2story(
 
 
 # =========================================================================
-# Stage 3 : Story  ->  Audio
+# Stage 3 : Story  ->  Audio  (gTTS - allowed by the assignment PDF)
 # =========================================================================
-def text2audio(story_text: str) -> Tuple[np.ndarray, int]:
+def text2audio(story_text: str) -> bytes:
     """
-    Convert a story into audio (numpy array + sampling rate)
-    using SpeechT5 with a warm female speaker embedding.
+    Convert a story into MP3 audio bytes using gTTS.
+    `tld='co.uk'` gives a warm British female voice that sounds
+    storyteller-like for children. Switch to 'com' (US) or 'com.au'
+    (Australian) if you prefer a different accent.
     """
-    tts_pipe, speaker_embedding = load_tts_pipeline_and_embedding()
-    output = tts_pipe(
-        story_text,
-        forward_params={"speaker_embeddings": speaker_embedding},
+    tts = gTTS(
+        text=story_text,
+        lang="en",
+        tld="co.uk",
+        slow=False,
     )
-    audio = np.asarray(output["audio"], dtype=np.float32)
-    sampling_rate = int(output["sampling_rate"])
-    return audio, sampling_rate
+    buffer = io.BytesIO()
+    tts.write_to_fp(buffer)
+    buffer.seek(0)
+    return buffer.read()
 
 
 # =========================================================================
 # Streamlit UI
 # =========================================================================
 st.title("📖 Magical Storytelling App")
-st.markdown(
-    "#### Upload a picture and I'll turn it into a fun little story 🦄✨"
-)
+st.markdown("#### Upload a picture and I'll turn it into a fun little story 🦄✨")
 st.markdown(
     "Made for kids aged **3 to 10** — pick a theme, get a story, and listen!"
 )
 
-# --- Sidebar : theme picker + info ---------------------------------------
 with st.sidebar:
     st.header("🎨 Story settings")
     theme = st.selectbox(
@@ -279,46 +289,32 @@ with st.sidebar:
         "After that, everything is fast! ☕"
     )
 
-# --- File uploader -------------------------------------------------------
 uploaded_file = st.file_uploader(
     "📷 Choose a picture (JPG, JPEG, or PNG)",
     type=["jpg", "jpeg", "png"],
 )
 
-# --- Initialise session state slots --------------------------------------
-for key in (
-    "file_key", "caption", "story", "audio", "sample_rate", "theme_used",
-):
+for key in ("file_key", "caption", "story", "audio", "theme_used"):
     st.session_state.setdefault(key, None)
 
 
-# =========================================================================
-# Main flow (only runs when an image is uploaded)
-# =========================================================================
 if uploaded_file is not None:
     file_key = _hash_uploaded_file(uploaded_file)
 
-    # If a different image was uploaded, reset all generated content.
+    # New image  ->  reset all generated content.
     if st.session_state["file_key"] != file_key:
         st.session_state.update(
             file_key=file_key,
             caption=None,
             story=None,
             audio=None,
-            sample_rate=None,
             theme_used=None,
         )
 
-    # ---- Always show the uploaded image (Requirement #4) ----
-    st.image(
-        uploaded_file,
-        caption="🖼️  Your picture",
-        use_container_width=True,
-    )
+    # Always show the uploaded image (Requirement #4).
+    st.image(uploaded_file, caption="🖼️  Your picture", use_container_width=True)
 
-    # =====================================================================
-    # Stage 1 : Caption (generated only once per image)
-    # =====================================================================
+    # ---- Stage 1: caption (once per image) ----
     if st.session_state["caption"] is None:
         with st.spinner("🔍  Looking at your picture…"):
             try:
@@ -331,9 +327,7 @@ if uploaded_file is not None:
     with st.expander("🔎  What I saw in the picture"):
         st.write(st.session_state["caption"])
 
-    # =====================================================================
-    # Stage 2 : Story (generated once per image+theme; or on user request)
-    # =====================================================================
+    # ---- Stage 2: story (once per image+theme; or on user request) ----
     st.markdown("### 📚 Your story")
 
     regen_clicked = st.button(
@@ -357,12 +351,10 @@ if uploaded_file is not None:
                 st.session_state["theme_used"] = theme
                 # Story changed -> any cached audio is now stale.
                 st.session_state["audio"] = None
-                st.session_state["sample_rate"] = None
             except Exception as exc:
                 st.error(f"😔  Sorry, I couldn't write a story. ({exc})")
                 st.stop()
 
-    # ---- Display the story + word count + download button ----
     if st.session_state["story"]:
         st.markdown(
             f"<div class='story-card'>{st.session_state['story']}</div>",
@@ -382,12 +374,9 @@ if uploaded_file is not None:
             use_container_width=True,
         )
 
-        # =================================================================
-        # Stage 3 : Audio (generated once per story; replay never regens)
-        # =================================================================
+        # ---- Stage 3: audio (once per story; replays do NOT regenerate) ----
         st.markdown("### 🎧 Listen to your story")
 
-        # Show the "Read it aloud!" button only if no audio yet.
         if st.session_state["audio"] is None:
             if st.button(
                 "🔊  Read it aloud!",
@@ -396,20 +385,17 @@ if uploaded_file is not None:
             ):
                 with st.spinner("🎙️  Recording the story with a friendly voice…"):
                     try:
-                        audio, sr = text2audio(st.session_state["story"])
-                        st.session_state["audio"] = audio
-                        st.session_state["sample_rate"] = sr
+                        st.session_state["audio"] = text2audio(
+                            st.session_state["story"]
+                        )
                     except Exception as exc:
                         st.error(
-                            f"😔  Sorry, I couldn't read the story aloud. ({exc})"
+                            f"😔  Sorry, I couldn't read the story aloud. "
+                            f"Please check your internet connection. ({exc})"
                         )
 
-        # Once audio exists, just play it (replays do NOT regenerate anything).
         if st.session_state["audio"] is not None:
-            st.audio(
-                st.session_state["audio"],
-                sample_rate=st.session_state["sample_rate"],
-            )
+            st.audio(st.session_state["audio"], format="audio/mp3")
             st.caption(
                 "🎵  Press play above to listen — replay it as many times "
                 "as you like!"
