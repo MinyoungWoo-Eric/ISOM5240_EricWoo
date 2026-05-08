@@ -1,5 +1,5 @@
-streamlit>=1.36.0
-transformers>=4.41.0
+streamlit
+transformers
 torch>=2.0.0
 datasets>=2.14.0
 sentencepiece>=0.1.99
