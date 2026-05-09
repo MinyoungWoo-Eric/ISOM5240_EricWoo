@@ -1,13 +1,15 @@
 """
 Storytelling App  -  ISOM5240 Individual Assignment
+Student Name: Minyoung Woo
+Student ID: 21211872
 ====================================================
 A Streamlit app that turns an uploaded picture into a short, kid-friendly
 audio story for children aged 3 to 10.
 
 Pipeline (each stage is a clearly named function):
-    1) img2text(image)    : Salesforce/blip-image-captioning-base   (HF Image-to-Text)
-    2) text2story(caption): Qwen/Qwen2.5-0.5B-Instruct              (HF Text Generation)
-    3) text2audio(story)  : gTTS  (assignment-allowed, kid-friendly)
+    1) img2text    : Salesforce/blip-image-captioning-large   (HF Image-to-Text)
+    2) text2story  : Qwen/Qwen2.5-0.5B-Instruct              (HF Text Generation)
+    3) text2audio  : gTTS  
 
 State management:
     - All HF models are loaded once via @st.cache_resource.
@@ -31,7 +33,7 @@ from transformers import pipeline
 
 
 # =========================================================================
-# Page configuration & light styling
+# Page configuration 
 # =========================================================================
 st.set_page_config(
     page_title="Storytelling App",
@@ -83,9 +85,6 @@ def load_story_pipeline():
     Qwen2.5 is a modern, instruction-tuned causal LM in the
     Hugging Face 'Text Generation' category.
     """
-    # High-level pipeline helper (same as the HF model card snippet).
-    # bfloat16 cuts the LM's RAM usage in half — important on
-    # Streamlit Cloud's 1 GB free tier.
     return pipeline(
         "text-generation",
         model="Qwen/Qwen2.5-0.5B-Instruct",
@@ -236,12 +235,12 @@ def text2story(
 
 
 # =========================================================================
-# Stage 3 : Story  ->  Audio  (gTTS - allowed by the assignment PDF)
+# Stage 3 : Story  ->  Audio  (gTTS)
 # =========================================================================
 def text2audio(story_text: str) -> bytes:
     """
     Convert a story into MP3 audio bytes using gTTS.
-    `tld='com'` gives a warm Enlish female voice that sounds
+    `tld='com'` gives a warm American Enlish female voice that sounds
     storyteller-like for children. Switch to 'co.uk' (Uk) or 'com.au'
     (Australian) if you prefer a different accent.
     """
@@ -287,7 +286,7 @@ if uploaded_file is not None:
             audio=None,
         )
 
-    # Always show the uploaded image (Requirement #4).
+    # Always show the uploaded image 
     st.image(uploaded_file, caption="🖼️  Uploaded Picture", use_container_width=True)
 
     # ---- Stage 1: caption (once per image) ----
