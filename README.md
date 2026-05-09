@@ -16,7 +16,7 @@ It is built with three Hugging Face models, one per stage:
 
 | Stage | Model | Hugging Face ID |
 |---|---|---|
-| 🖼️ Image captioning | BLIP | `Salesforce/blip-image-captioning-base` |
+| 🖼️ Image captioning | BLIP | `Salesforce/blip-image-captioning-large` |
 | ✍️ Story generation | Flan-T5 (instruction-tuned) | `google/flan-t5-base` |
 | 🎤 Text-to-speech | SpeechT5 + warm female voice | `microsoft/speecht5_tts` |
 
