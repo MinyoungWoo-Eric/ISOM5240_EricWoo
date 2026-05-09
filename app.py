@@ -72,7 +72,7 @@ def load_caption_model():
     """Load BLIP via the high-level pipeline helper."""
     return pipeline(
         "image-to-text",
-        model="Salesforce/blip-image-captioning-base",
+        model="Salesforce/blip-image-captioning-large",
     )
 
 
