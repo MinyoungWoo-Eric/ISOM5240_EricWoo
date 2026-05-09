@@ -266,13 +266,6 @@ st.markdown(
     "Made for kids aged **3 to 10** — pick a theme, get a story, and listen!"
 )
 
-with st.sidebar:
-    st.header("🎨 How it works")
-    st.caption(
-        "ℹ️  The first time you use the app, the AI models need to load. "
-        "After that, everything is fast! ☕"
-    )
-
 uploaded_file = st.file_uploader(
     "📷 Choose a picture (JPG, JPEG, or PNG)",
     type=["jpg", "jpeg", "png"],
