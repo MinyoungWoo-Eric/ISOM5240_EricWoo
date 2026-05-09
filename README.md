@@ -18,7 +18,7 @@ It is built with three Hugging Face models, one per stage:
 |---|---|---|
 | 🖼️ Image captioning | BLIP | `Salesforce/blip-image-captioning-large` |
 | ✍️ Story generation | Qwen/Qwen2.5-0.5B-Instruct (instruction-tuned) | `Qwen/Qwen2.5-0.5B-Instruct` |
-| 🎤 Text-to-speech | SpeechT5 + warm female voice | `microsoft/speecht5_tts` |
+| 🎤 Text-to-speech | gTTS | `gTTS` |
 
 ---
 
