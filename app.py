@@ -67,7 +67,7 @@ st.markdown(
 
 
 # =========================================================================
-# Cached model loaders  (run once per session thanks to @st.cache_resource)
+# Cached model loaders  (run once per session)
 # =========================================================================
 @st.cache_resource(show_spinner="🖼️  Loading the picture-reader…")
 def load_caption_model():
@@ -302,7 +302,7 @@ if uploaded_file is not None:
     st.markdown("**🔎  What I saw in the picture:**")
     st.info(st.session_state["caption"])
 
-    # ---- Stage 2: story (once per image+theme; or on user request) ----
+    # ---- Stage 2: story (once per image; or regenerate story on user request) ----
     st.markdown("### 📚 Your story")
 
     regen_clicked = st.button(
