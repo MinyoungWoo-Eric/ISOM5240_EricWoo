@@ -196,6 +196,7 @@ def text2story(
         outputs = storyteller(
             messages,
             max_new_tokens=220,
+            min_new_tokens=60,
             do_sample=True,
             temperature=0.70 + 0.05 * attempt,   
             top_p=0.95,
