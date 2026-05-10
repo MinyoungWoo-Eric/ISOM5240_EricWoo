@@ -6,7 +6,7 @@ A Streamlit app that turns an uploaded picture into a short, kid-friendly
 audio story for children aged 3 to 10.
 
 Pipeline (each stage is a clearly named function):
-    1) img2text    : Salesforce/blip-image-captioning-large   (HF Image-to-Text)
+    1) img2text    : Salesforce/blip-image-captioning-base   (HF Image-to-Text)
     2) text2story  : Qwen/Qwen2.5-0.5B-Instruct              (HF Text Generation)
     3) text2audio  : gTTS  
 
@@ -71,10 +71,14 @@ st.markdown(
 # =========================================================================
 @st.cache_resource(show_spinner="🖼️  Loading the picture-reader…")
 def load_caption_model():
-    """Load BLIP via the high-level pipeline helper."""
+    """
+    Load BLIP via the high-level pipeline helper.
+    We use the 'base' variant (~500 MB) rather than 'large' (~900 MB)
+    to stay within Streamlit Community Cloud's 1 GB free-tier RAM limit.
+    """
     return pipeline(
         "image-to-text",
-        model="Salesforce/blip-image-captioning-large",
+        model="Salesforce/blip-image-captioning-base",
     )
 
 
@@ -138,7 +142,7 @@ def _extract_assistant_reply(generated):
 # Stage 1 : Image  ->  Caption
 # =========================================================================
 def img2text(image) -> str:
-    """Generate a short caption from a PIL.Image (or file path / bytes)."""
+    """Generate a short caption from a PIL.Image or a file-path string."""
     captioner = load_caption_model()
     if not isinstance(image, Image.Image):
         image = Image.open(image).convert("RGB")
@@ -361,7 +365,6 @@ if uploaded_file is not None:
 
         if st.session_state["audio"] is not None:
             st.audio(st.session_state["audio"], format="audio/mp3")
-            st.balloons()
             st.caption(
                 "🎵  Press play above to listen — replay it as many times "
                 "as you like!"
