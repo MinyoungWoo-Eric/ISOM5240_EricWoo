@@ -14,6 +14,7 @@ State management:
     - All HF models are loaded once via @st.cache_resource.
     - Caption / story / audio are kept in st.session_state so that:
         * Playing the audio does NOT regenerate the story.
+        * There is a function to try a different story based on uploaded picture. 
         * Uploading a new image resets everything.
 """
 
