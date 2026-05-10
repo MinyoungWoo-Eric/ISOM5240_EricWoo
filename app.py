@@ -262,7 +262,7 @@ def text2audio(story_text: str) -> bytes:
 st.title("📖 Magical Storytelling App")
 st.markdown("#### Upload a picture and I'll turn it into a fun little story 🦄✨")
 st.markdown(
-    "Made for kids aged **3 to 10** — pick a theme, get a story, and listen!"
+    "Made for kids aged **3 to 10** — choose a picture, get a story, and listen!"
 )
 
 uploaded_file = st.file_uploader(
