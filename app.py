@@ -1,7 +1,6 @@
 """
 Storytelling App  -  ISOM5240 Individual Assignment
-Student Name: Minyoung Woo
-Student ID: 21211872
+Name: Minyoung Woo
 ====================================================
 A Streamlit app that turns an uploaded picture into a short, kid-friendly
 audio story for children aged 3 to 10.
