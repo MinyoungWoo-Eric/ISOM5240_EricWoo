@@ -1,7 +1,8 @@
-# ISOM5240_EricWoo
 # 📖 Magical Storytelling App
 
-Turn any picture into a fun, friendly little story for kids aged **3 to 10** — and listen to it being read aloud! 🦄✨
+Upload any picture and watch it turn into a fun little story — then listen to it being read aloud! 🦄✨
+
+Built for kids aged **3 to 10** as part of the ISOM5240 Individual Assignment.
 
 ---
 
@@ -9,49 +10,50 @@ Turn any picture into a fun, friendly little story for kids aged **3 to 10** —
 
 1. You **upload a picture** 🖼️
 2. The app **looks at the picture** and writes down what it sees
-3. It then **writes a short story** (50–100 words) for you, in the theme you pick 🎨
-4. Finally, it **reads the story out loud** so you can sit back and listen 🎧
+3. It **writes a short story** (50–100 words) based on exactly what's in the picture
+4. It **reads the story out loud** so you can sit back and listen 🎧
 
-It is built with three Hugging Face models, one per stage:
+Three Hugging Face models power the three stages:
 
-| Stage | Model | Hugging Face ID |
+| Stage | Model | Type |
 |---|---|---|
-| 🖼️ Image captioning | BLIP | `Salesforce/blip-image-captioning-large` |
-| ✍️ Story generation | Qwen/Qwen2.5-0.5B-Instruct (instruction-tuned) | `Qwen/Qwen2.5-0.5B-Instruct` |
-| 🎤 Text-to-speech | gTTS | `gTTS` |
+| 🖼️ Image captioning | `Salesforce/blip-image-captioning-base` | HF Image-to-Text |
+| ✍️ Story generation | `Qwen/Qwen2.5-0.5B-Instruct` | HF Text Generation |
+| 🎤 Text-to-speech | `gTTS` (Google Text-to-Speech) | Python TTS module |
 
 ---
 
 ## 🎨 Features
 
-- 📷 Upload `.jpg`, `.jpeg`, or `.png` pictures and see them stay on the page.
-- 🎭 Pick a **story theme** — Adventure, Friendship, Magic, Animals, Space, or Bedtime.
-- 📝 Get a **kid-friendly** story between **50 and 100 words**.
-- 📏 See the **word count** of your story.
-- 🔄 Click **"Try a different story"** to roll the dice again on the same picture.
-- 💾 **Download** your story as a text file.
-- 🔊 **Listen** to the story read aloud in a clear, friendly voice.
-- 🎵 **Replay** the audio as many times as you like — no waiting, no re-generating!
+- 📷 Upload `.jpg`, `.jpeg`, or `.png` pictures
+- 🖼️ The uploaded picture stays visible throughout the whole experience
+- 🔎 See a plain-English description of what the AI spotted in your picture
+- 📝 Get a warm, happy 50–100 word story based on your picture
+- 📏 See the story's word count (the target is 50–100 words ✅)
+- 🔄 Click **"Try a different story"** to get a brand-new story from the same picture
+- 🔊 Click **"Read it aloud!"** to hear the story spoken in a friendly voice
+- 🎵 Replay the audio as many times as you like — no waiting, no re-generating
 
 ---
 
-## 🧒 For grown-ups: how to run it
+## 🧒 For grown-ups: how to run it locally
 
 ### Requirements
+
 - Python **3.10 or newer**
-- About **3 GB of free disk space** (the AI models download the first time)
-- An internet connection (only needed once, to download the models)
+- About **1.5 GB of free disk space** (for the AI models, downloaded once)
+- An internet connection (only needed for the initial model download and audio)
 
 ### Setup
 
 ```bash
-# 1. Clone or download this repo
+# 1. Clone or download this repository
 git clone <your-repo-url>
 cd storytelling-app
 
-# 2. (Recommended) Create a virtual environment
+# 2. (Recommended) create a virtual environment
 python -m venv venv
-source venv/bin/activate          # Windows: venv\Scripts\activate
+source venv/bin/activate        # Windows: venv\Scripts\activate
 
 # 3. Install dependencies
 pip install -r requirements.txt
@@ -60,56 +62,60 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
-The app will open in your browser at `http://localhost:8501`.
+The app opens in your browser at `http://localhost:8501`.
 
-> **First run is slow!** The three models (~2.5 GB total) are downloaded the first time. After that, every run is fast.
+> **First run is slow!** The AI models (~1 GB total) download on first use. After that, every run is fast thanks to Streamlit's `@st.cache_resource`. ☕
 
 ---
 
-## ☁️ Deploying on Streamlit Cloud
+## ☁️ Deploying on Streamlit Community Cloud
 
-1. Push these three files to a **public GitHub repo**:
+1. Push these files to a **public GitHub repository**:
    - `app.py`
    - `requirements.txt`
    - `README.md`
-2. Go to [share.streamlit.io](https://share.streamlit.io), sign in with GitHub, and click **"New app"**.
-3. Pick your repo and `app.py` as the entry point. Leave the Python version at the default (3.11+).
-4. Click **Deploy**. The first build takes 5–10 minutes while the models download.
-5. Share the resulting URL — that's your demo!
+
+2. Go to [share.streamlit.io](https://share.streamlit.io), sign in with GitHub, click **"New app"**.
+
+3. Select your repo, set the entry point to `app.py`, leave Python at the default (3.11+).
+
+4. Click **Deploy**. The first build takes 5–10 minutes while models download.
+
+> **Memory note:** Streamlit Community Cloud's free tier allows ~1 GB RAM. This app uses `blip-image-captioning-base` (~500 MB) and `Qwen2.5-0.5B-Instruct` in `bfloat16` (~500 MB), keeping the total within the limit.
 
 ---
 
 ## 📷 What pictures work best?
 
-- Photos of pets 🐶🐱
-- Toys, dolls, or stuffed animals 🧸
-- Outdoor scenes — beaches, mountains, parks 🏖️🏔️🌳
-- Family pictures and cartoons 👨‍👩‍👧‍👦
-- Anything colourful and clear works great!
+- Pets and animals 🐶🐱🐰
+- Outdoor scenes — parks, beaches, gardens 🏖️🌳
+- Toys, books, and everyday objects 🧸📚
+- Simple, clear, colourful photos
 
-Avoid blurry pictures or pictures with a lot of text — the captioner does best on clear, simple subjects.
-
----
-
-## 🛠️ How it's built (a note for the grader)
-
-- All three model stages are wrapped in their own clearly named functions:
-  `img2text(image)`, `text2story(caption, theme)`, `text2audio(story_text)`.
-- Models are loaded **once** with `@st.cache_resource`.
-- Generated **caption / story / audio** are stored in `st.session_state` so that:
-  - Pressing play does **not** regenerate the story or the audio.
-  - Changing the theme regenerates **only** the story (caption is reused).
-  - Uploading a new image resets everything via an MD5 file-key.
-- Story length is **validated**, **trimmed**, and **retried** so the final story always lands inside the assignment's 50–100 word target.
-- Errors during model inference are caught and shown as friendly messages (no Python tracebacks for kids).
+> Blurry or very dark pictures may produce a vague caption, which leads to a more generic story. Clear, well-lit photos give the best results!
 
 ---
 
-## ⚠️ Honest notes & limitations
+## 🛠️ How the code is structured
 
-- **No true "child voice" TTS exists** under a permissive license on Hugging Face. We picked a clear, bright female voice from the CMU-Arctic xvector dataset — it is much warmer and friendlier for kids than the default `mms-tts-eng` adult-male voice, but it is not literally a child's voice.
-- Story generation is **non-deterministic**: if you don't love the first one, just press **"Try a different story"**.
-- The first run downloads ~2.5 GB of models. Be patient! ☕
+```
+app.py
+│
+├── load_caption_model()   — loads BLIP once via @st.cache_resource
+├── load_story_pipeline()  — loads Qwen2.5 once via @st.cache_resource
+│
+├── img2text(image)        — Stage 1: image → caption (BLIP)
+├── text2story(caption)    — Stage 2: caption → 50-100 word story (Qwen2.5)
+└── text2audio(story_text) — Stage 3: story → MP3 audio bytes (gTTS)
+```
+
+Key design decisions:
+
+- **`@st.cache_resource`** — each model loads exactly once per session; no redundant downloads.
+- **`st.session_state`** — caption, story, and audio are cached across reruns so that pressing play never re-generates the story, and clicking "Try a different story" only re-runs Stage 2.
+- **Uploading a new image resets** all three outputs automatically (detected via an MD5 file hash).
+- **Word-count validation** — the story goes through a retry loop and a safety-net trim/pad so it always lands in the 50–100 word target.
+- **Error handling** — all three stages are wrapped in `try/except`; failures show a friendly message instead of a Python traceback.
 
 ---
 
