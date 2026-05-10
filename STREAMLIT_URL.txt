@@ -1,0 +1,20 @@
+ISOM5240 Individual Assignment — Submission Details
+====================================================
+Name        : Minyoung Woo
+Course      : ISOM5240
+
+Streamlit App URL:
+https://isom5240ericwoo.streamlit.app/
+
+GitHub Repo URL:
+https://github.com/MinyoungWoo-Eric/ISOM5240_EricWoo
+
+Submitted Files:
+  - app.py           : Main application source code with comments
+  - requirements.txt : Python dependencies
+  - README.md        : Setup and usage instructions
+  - STREAMLIT_URL.txt   : This file
+
+Notes:
+  - First load takes ~2-3 minutes while AI models download.
+  - Tested on Streamlit Community Cloud (free tier).
