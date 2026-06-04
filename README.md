@@ -2,7 +2,7 @@
 
 Upload any picture and watch it turn into a fun little story — then listen to it being read aloud! 🦄✨
 
-Built for kids aged **3 to 10** as part of the ISOM5240 Individual Assignment.
+Built for kids aged **3 to 10**.
 
 ---
 
@@ -61,4 +61,4 @@ Key design decisions:
 
 ## 📝 License
 
-Provided for educational use as part of the **ISOM5240 Individual Assignment**.
+Provided for educational use as part of the **Individual Project**.
