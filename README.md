@@ -4,6 +4,7 @@ Upload any picture and watch it turn into a fun little story — then listen to 
 
 Built for kids aged **3 to 10**.
 
+🔗 **Live App:** [deeplearningproject-erics.streamlit.app](https://deeplearningproject-erics.streamlit.app)
 ---
 
 ## ✨ What this app does
